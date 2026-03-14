@@ -1,0 +1,159 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id String @id @default(uuid())
+  firstName String
+  lastName String
+  email String @unique
+  phone String?
+  passwordHash String
+  role Role @default(guest)
+  loyaltyPoints Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  preferences GuestPreference?
+  bookings Booking[]
+  serviceRequests ServiceRequest[]
+  notifications   Notification[]
+  cookieConsents  CookieConsent[]
+}
+
+model GuestPreference {
+  id String  @id @default(uuid())
+  userId String  @unique
+  preferredRoom String?
+  bedType String?
+  temperature Int?
+  dietaryNotes String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Room {
+  id String @id @default(uuid())
+  roomNumber String @unique
+  roomType String
+  floor Int
+  pricePerNight Float
+  status RoomStatus
+
+  bookings Booking[]
+}
+
+model Booking {
+  id              String   @id @default(uuid())
+  userId          String
+  roomId          String
+  checkInDate     DateTime
+  checkOutDate    DateTime
+  totalPrice      Float
+  status          BookingStatus
+  checkInComplete Boolean  @default(false)
+  digitalKey      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  serviceRequests ServiceRequest[]
+}
+
+model ServiceRequest {
+  id          String   @id @default(uuid())
+  userId      String
+  bookingId   String
+  category    String
+  title       String
+  description String
+  priority    Priority
+  status      RequestStatus
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  trackingLogs TrackingLog[]
+}
+
+model TrackingLog {
+  id               String   @id @default(uuid())
+  serviceRequestId String
+  statusUpdate     String
+  note             String?
+  updatedAt        DateTime @default(now())
+
+  serviceRequest ServiceRequest @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CookieConsent {
+  id                 String   @id @default(uuid())
+  userId             String?
+  essentialCookies   Boolean  @default(true)
+  analyticsCookies   Boolean  @default(false)
+  functionalCookies  Boolean  @default(false)
+  advertisingCookies Boolean  @default(false)
+  consentGiven       Boolean
+  createdAt          DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  guest
+  staff
+  admin
+}
+
+enum RoomStatus {
+  available
+  occupied
+  maintenance
+  cleaning
+}
+
+enum BookingStatus {
+  reserved
+  checked_in
+  checked_out
+  cancelled
+}
+
+enum RequestStatus {
+  submitted
+  assigned
+  in_progress
+  completed
+}
+
+enum Priority {
+  low
+  medium
+  high
+}
